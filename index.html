@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clavier maths pour Anki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&family=JetBrains+Mono:wght@400;500&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Math&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eceff8; --panel:#f8f9fd; --paper:#fdfdff; --rule:#d5dcf2; --rule2:#e8ecf9; --margin:#e26a6a;
+  --ink:#151d52; --muted:#5f6796; --line:#c9d1ec;
+  --accent:#2a3fd6; --accent-ink:#ffffff;
+  --key:#ffffff; --key-alt:#dfe5f8; --key-press:#c9d3f5;
+  --code-bg:#151d52; --code-ink:#e9edff; --warn:#9a4a00;
+  --ui:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --math:'STIX Two Text','Cambria Math','Times New Roman',serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1024; --panel:#141936; --paper:#101431; --rule:#1f2652; --rule2:#171d42; --margin:#b24a4a;
+    --ink:#e7eaff; --muted:#939ad0; --line:#262e5e;
+    --accent:#7f92ff; --accent-ink:#0d1024;
+    --key:#1b2148; --key-alt:#232b5a; --key-press:#2e3870;
+    --code-bg:#080a19; --code-ink:#e7eaff; --warn:#ffb36b;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1024; --panel:#141936; --paper:#101431; --rule:#1f2652; --rule2:#171d42; --margin:#b24a4a;
+  --ink:#e7eaff; --muted:#939ad0; --line:#262e5e;
+  --accent:#7f92ff; --accent-ink:#0d1024;
+  --key:#1b2148; --key-alt:#232b5a; --key-press:#2e3870;
+  --code-bg:#080a19; --code-ink:#e7eaff; --warn:#ffb36b;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:15px;line-height:1.35;overflow:hidden;-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+button{font-family:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:780px;height:100%;margin:0 auto;display:flex;flex-direction:column}
+
+/* En-tête */
+.top{flex:none;display:flex;align-items:baseline;justify-content:space-between;padding:10px 14px 6px}
+.top h1{margin:0;font-size:1.2rem;font-weight:700;letter-spacing:-.01em}
+.top span{font-size:.78rem;color:var(--muted)}
+
+/* Zone de travail */
+#work{flex:1;min-height:0;overflow-y:auto;padding:4px 12px 12px;display:flex;flex-direction:column;gap:14px}
+.lab{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:.82rem;font-weight:500;color:var(--muted)}
+.grow{flex:1}
+
+/* Aperçu sur papier à grands carreaux : l'élément marquant */
+.paper{
+  min-height:92px;padding:16px 14px 16px 46px;border:1px solid var(--line);border-radius:10px;
+  overflow-x:auto;text-align:center;font-size:1.3rem;color:var(--ink);
+  background-color:var(--paper);
+  background-image:
+    linear-gradient(to right,transparent 0 33px,var(--margin) 33px 34px,transparent 34px),
+    repeating-linear-gradient(to bottom,transparent 0 23px,var(--rule) 23px 24px),
+    repeating-linear-gradient(to right,transparent 0 23px,var(--rule2) 23px 24px);
+  background-attachment:local;
+}
+.paper .ph{font-size:.9rem;color:var(--muted)}
+.paper.block{font-size:1.4rem}
+.paper mjx-container{margin:0!important}
+
+/* Éditeur */
+#src{
+  width:100%;display:block;resize:vertical;min-height:74px;padding:10px 12px;
+  font:400 16px/1.5 var(--mono);color:var(--ink);background:var(--panel);
+  border:1px solid var(--line);border-radius:8px;caret-color:var(--accent);
+}
+#src:focus{outline:2px solid var(--accent);outline-offset:1px}
+.mini{padding:3px 9px;border:1px solid var(--line);background:transparent;border-radius:999px;font-size:.76rem;color:var(--muted)}
+.mini.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* Code de sortie */
+.outbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:9px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+.seg button{flex:1;padding:7px 4px;border:0;background:transparent;color:var(--muted);font-size:.86rem;font-weight:500;display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.1}
+.seg button small{font:400 .68rem var(--mono);opacity:.85}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.opts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:.82rem;background:var(--bg);user-select:none}
+.chip input{accent-color:var(--accent);margin:0}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--bg);overflow:hidden}
+.stepper button{width:28px;height:26px;border:0;background:transparent;font-size:1rem;line-height:1}
+.stepper b{min-width:30px;text-align:center;font:500 .82rem var(--mono)}
+#out{
+  width:100%;display:block;resize:none;overflow:hidden;min-height:56px;padding:10px 12px;
+  font:500 .92rem/1.5 var(--mono);color:var(--code-ink);background:var(--code-bg);
+  border:0;border-radius:8px;
+}
+#out:focus{outline:2px solid var(--accent);outline-offset:1px}
+.warn{font-size:.8rem;color:var(--warn)}
+.row{display:flex;gap:8px}
+.btn{flex:1;min-height:42px;padding:0 14px;border:1px solid var(--line);background:var(--key);border-radius:8px;font-size:.95rem;font-weight:500}
+.btn.primary{flex:2;background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:700}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:active:not(:disabled){transform:translateY(1px)}
+
+/* Listes repliables */
+details{border-top:1px solid var(--line);padding:8px 2px}
+details summary{cursor:pointer;font-size:.9rem;font-weight:500;padding:4px 0}
+details[open] summary{margin-bottom:6px}
+.muted{color:var(--muted);font-size:.85rem;margin:4px 0}
+.srow{display:flex;align-items:center;gap:6px;padding:4px 0;border-top:1px dashed var(--line)}
+.srow:first-of-type{border-top:0}
+.sload{flex:1;min-width:0;text-align:left;border:0;background:transparent;font:400 .84rem var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:6px 2px}
+.sbtn{border:1px solid var(--line);background:var(--key);border-radius:6px;padding:4px 9px;font-size:.78rem}
+.help p,.help li{font-size:.86rem;color:var(--ink);margin:0 0 6px}
+.help ul{margin:0;padding-left:18px}
+.help code{font:500 .8rem var(--mono);background:var(--key-alt);padding:1px 5px;border-radius:4px}
+
+/* Clavier */
+.kb{flex:none;background:var(--panel);border-top:1px solid var(--line);padding:8px 8px 6px}
+.tools{display:flex;gap:5px;margin-bottom:6px}
+.tool{flex:1;min-width:0;min-height:34px;padding:0 2px;border:1px solid var(--line);background:var(--key-alt);border-radius:7px;font-size:.78rem;font-weight:500;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.tool.go{flex:1.7;background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:700}
+.tool:active{background:var(--key-press)}
+.tool.go:active{filter:brightness(.92)}
+.tabs{display:flex;gap:4px;overflow-x:auto;margin-bottom:6px;scrollbar-width:none;padding-bottom:1px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;font-size:.82rem;font-weight:500;color:var(--muted)}
+.tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.keys{display:grid;gap:5px;overflow-y:auto;max-height:clamp(168px,33vh,290px);padding-bottom:2px;overscroll-behavior:contain}
+.key{
+  min-height:42px;padding:0 3px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:8px;background:var(--key);color:var(--ink);
+  font-family:var(--math);font-size:1.18rem;line-height:1;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.key:active{background:var(--key-press);transform:translateY(1px);border-bottom-width:1px}
+.key.num{font-family:var(--ui);font-weight:700;font-size:1.1rem;background:var(--key-alt)}
+.key.var{font-style:italic}
+.key.fn{font-family:var(--ui);font-size:.86rem;font-weight:500}
+.key sup,.key sub{font-size:.62em;line-height:0}
+.key em{font-style:normal;font-size:.55em;color:var(--muted);align-self:flex-start;margin-left:2px}
+.fr{display:inline-flex;flex-direction:column;align-items:center;font-size:.82em;line-height:1.05}
+.fr i{font-style:normal;padding:0 3px}
+.fr i:first-child{border-bottom:1px solid currentColor}
+.acc{position:relative;display:inline-block;padding-top:.45em}
+.acc::before{content:attr(data-a);position:absolute;top:-.1em;left:0;right:0;text-align:center;font-size:.75em;line-height:1}
+.small{font:500 .72rem var(--ui)}
+
+/* Onglet Lettres */
+.sub{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.sub .tool{flex:none;min-width:52px;padding:0 12px}
+.seg2{display:flex;flex:none;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg2 button{padding:0 11px;min-height:32px;border:0;background:transparent;font-size:.82rem;font-weight:500;color:var(--muted)}
+.seg2 button+button{border-left:1px solid var(--line)}
+.seg2 button.on{background:var(--ink);color:var(--bg)}
+.tool.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.tool.on.lock{box-shadow:inset 0 -3px 0 rgba(255,255,255,.75)}
+.tool:disabled{opacity:.55}
+.styles{display:flex;gap:4px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+.styles::-webkit-scrollbar{display:none}
+.styles button{flex:none;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;font-size:.78rem;font-weight:500;color:var(--muted)}
+.styles button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.key.it{font-style:italic}
+.key.rm{font-style:normal}
+.key.bf{font-style:normal;font-weight:700}
+.key.gk{font-style:normal}
+.key.gk.it{font-style:italic}
+.key.uni{font-family:'Noto Sans Math','Cambria Math','STIX Two Math','Apple Symbols','Segoe UI Symbol',var(--math)}
+
+#stage{position:absolute;left:-9999px;top:0;width:900px;visibility:hidden}
+#toast{
+  position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translate(-50%,-14px);
+  background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:.85rem;font-weight:500;
+  opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:10;white-space:nowrap
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion: reduce){ #toast{transition:none} }
+button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+  svg: { fontCache: 'local', scale: 1.05 },
+  startup: { typeset: false }
+};
+</script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"
+  onerror="var s=document.createElement('script');s.async=true;s.src='https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js';document.head.appendChild(s);"></script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Clavier maths</h1>
+    <span>Pour Anki</span>
+  </header>
+
+  <main id="work">
+    <section>
+      <p class="lab">Aperçu</p>
+      <div id="preview" class="paper"></div>
+    </section>
+
+    <section>
+      <p class="lab">Ta formule<span class="grow"></span>
+        <button class="mini" id="nat" type="button" title="Afficher le clavier du téléphone">Clavier système</button>
+        <button class="mini" id="clr" type="button">Effacer</button>
+      </p>
+      <textarea id="src" rows="3" inputmode="none" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Formule en LaTeX" placeholder="Utilise le clavier ci-dessous"></textarea>
+    </section>
+
+    <section>
+      <p class="lab">Code à coller dans Anki</p>
+      <div class="outbox">
+        <div class="seg" id="seg" role="group" aria-label="Format de sortie">
+          <button type="button" data-mode="inline" title="MathJax, dans le texte">En ligne<small>\( \)</small></button>
+          <button type="button" data-mode="block" title="MathJax, centré sur sa ligne">Bloc<small>\[ \]</small></button>
+          <button type="button" data-mode="latex" title="LaTeX classique, rendu en image">LaTeX<small>[$]</small></button>
+        </div>
+        <div class="opts">
+          <label class="chip"><input type="checkbox" id="cloze"> Cloze</label>
+          <span class="stepper" id="stepper" hidden>
+            <button type="button" data-d="-1" aria-label="Numéro précédent">−</button><b id="cn">c1</b><button type="button" data-d="1" aria-label="Numéro suivant">+</button>
+          </span>
+          <label class="chip"><input type="checkbox" id="esc"> Éditeur HTML</label>
+        </div>
+        <textarea id="out" readonly rows="2" aria-label="Code généré" placeholder="Le code apparaît ici"></textarea>
+        <div id="warn" class="warn" hidden></div>
+        <div class="row">
+          <button class="btn primary" id="copy" type="button">Copier le code</button>
+          <button class="btn" id="keep" type="button">Enregistrer</button>
+        </div>
+      </div>
+    </section>
+
+    <details id="savedBox">
+      <summary>Formules enregistrées (<span id="savedCount">0</span>)</summary>
+      <div id="saved"></div>
+    </details>
+
+    <details class="help">
+      <summary>Aide pour Anki</summary>
+      <ul>
+        <li><b>En ligne</b> : la formule s'insère dans ta phrase. <b>Bloc</b> : elle est centrée sur sa propre ligne.</li>
+        <li>Colle le code dans un champ de ta note. MathJax s'affiche sur ordinateur, AnkiDroid et AnkiMobile.</li>
+        <li><b>LaTeX</b> génère des images et demande une installation LaTeX sur l'ordinateur. Garde-le pour les cas où MathJax ne suffit pas.</li>
+        <li><b>Cloze</b> entoure la formule d'un trou <code>{{c1::…}}</code>. Les <code>}}</code> à l'intérieur sont séparés en <code>} }</code>, sinon Anki fermerait le trou trop tôt.</li>
+        <li><b>Éditeur HTML</b> (Ctrl+Maj+X dans Anki) : coche cette option pour échapper <code>&lt;</code>, <code>&gt;</code> et <code>&amp;</code>.</li>
+        <li>Les cases ▢ sont des champs à remplir. <b>Suivant</b> passe à la case suivante, <b>Sortir</b> quitte l'accolade ou la parenthèse en cours. Les cases restées vides sont retirées du code.</li>
+        <li>L'onglet <b>Lettres</b> donne l'alphabet latin (disposition AZERTY) et grec. <b>Maj</b> : un appui pour une capitale, deux pour verrouiller. Les styles droit, gras, ensemble, calligraphique et gothique s'appliquent aux lettres latines.</li>
+        <li>Tu peux aussi écrire du LaTeX à la main : le clavier n'est qu'un raccourci.</li>
+      </ul>
+    </details>
+  </main>
+
+  <nav class="kb" id="kb" aria-label="Clavier mathématique">
+    <div class="tools" id="tools">
+      <button class="tool" type="button" data-act="undo" title="Annuler" aria-label="Annuler">↶</button>
+      <button class="tool" type="button" data-act="redo" title="Rétablir" aria-label="Rétablir">↷</button>
+      <button class="tool" type="button" data-act="left" title="Curseur à gauche" aria-label="Curseur à gauche">◀</button>
+      <button class="tool" type="button" data-act="right" title="Curseur à droite" aria-label="Curseur à droite">▶</button>
+      <button class="tool go" type="button" data-act="next" title="Aller à la prochaine case ▢">Suivant</button>
+      <button class="tool" type="button" data-act="exit" title="Sortir de l'accolade ou de la parenthèse">Sortir</button>
+      <button class="tool" type="button" data-act="back" title="Effacer" aria-label="Effacer">⌫</button>
+    </div>
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <div class="sub" id="sub" hidden>
+      <div class="seg2" id="scriptSeg" role="group" aria-label="Alphabet">
+        <button type="button" data-s="latin" class="on">Latin</button>
+        <button type="button" data-s="greek">Grec</button>
+      </div>
+      <button class="tool" type="button" id="shift" aria-pressed="false" title="Majuscules : un appui pour une lettre, deux pour verrouiller">Maj</button>
+      <div class="styles" id="styles" role="group" aria-label="Style des lettres">
+        <button type="button" data-st="it" class="on">Italique</button>
+        <button type="button" data-st="rm">Droit</button>
+        <button type="button" data-st="bf">Gras</button>
+        <button type="button" data-st="bb">Ensemble</button>
+        <button type="button" data-st="cal">Cal.</button>
+        <button type="button" data-st="frak">Gothique</button>
+      </div>
+    </div>
+    <div class="keys" id="keys"></div>
+  </nav>
+</div>
+<div id="stage" aria-hidden="true"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var PH = '▢';
+var ta = $('src'), out = $('out'), prev = $('preview'), keysEl = $('keys'), tabsEl = $('tabs'), stage = $('stage');
+var st = { mode:'inline', cloze:false, n:1, esc:false, tab:'base', native:false, saved:[], script:'latin', shift:0, style:'it' };
+var curKeys = [];
+
+/* ---------- Données du clavier ---------- */
+var F  = function(a,b){ return '<span class="fr"><i>'+a+'</i><i>'+b+'</i></span>'; };
+var SP = function(b,e){ return b+'<sup>'+e+'</sup>'; };
+var SB = function(b,e){ return b+'<sub>'+e+'</sub>'; };
+var AC = function(a,t){ return '<span class="acc" data-a="'+a+'">'+t+'</span>'; };
+var K  = function(l,t,h){ return [l,t,h]; };
+
+var LAT = 'azertyuiopqsdfghjklmwxcvbn';
+var GK_LOW = [
+  ['α','\\alpha ','alpha'],['β','\\beta ','bêta'],['γ','\\gamma ','gamma'],['δ','\\delta ','delta'],['ε','\\varepsilon ','epsilon (ε)'],['ζ','\\zeta ','zêta'],['η','\\eta ','êta'],['θ','\\theta ','thêta'],
+  ['ι','\\iota ','iota'],['κ','\\kappa ','kappa'],['λ','\\lambda ','lambda'],['μ','\\mu ','mu'],['ν','\\nu ','nu'],['ξ','\\xi ','xi'],['ο','o','omicron'],['π','\\pi ','pi'],
+  ['ρ','\\rho ','rho'],['σ','\\sigma ','sigma'],['τ','\\tau ','tau'],['υ','\\upsilon ','upsilon'],['φ','\\varphi ','phi (φ)'],['χ','\\chi ','khi'],['ψ','\\psi ','psi'],['ω','\\omega ','oméga']
+];
+var GK_LOW_VAR = [['ϵ','\\epsilon ','epsilon (ϵ)'],['ϑ','\\vartheta ','thêta (ϑ)'],['ϰ','\\varkappa ','kappa (ϰ)'],['ϖ','\\varpi ','pi (ϖ)'],['ϱ','\\varrho ','rho (ϱ)'],['ς','\\varsigma ','sigma final (ς)'],['ϕ','\\phi ','phi (ϕ)']];
+var GK_UP = [
+  ['Α','\\mathrm{A}','Alpha'],['Β','\\mathrm{B}','Bêta'],['Γ','\\Gamma ','Gamma'],['Δ','\\Delta ','Delta'],['Ε','\\mathrm{E}','Epsilon'],['Ζ','\\mathrm{Z}','Zêta'],['Η','\\mathrm{H}','Êta'],['Θ','\\Theta ','Thêta'],
+  ['Ι','\\mathrm{I}','Iota'],['Κ','\\mathrm{K}','Kappa'],['Λ','\\Lambda ','Lambda'],['Μ','\\mathrm{M}','Mu'],['Ν','\\mathrm{N}','Nu'],['Ξ','\\Xi ','Xi'],['Ο','\\mathrm{O}','Omicron'],['Π','\\Pi ','Pi'],
+  ['Ρ','\\mathrm{P}','Rho'],['Σ','\\Sigma ','Sigma'],['Τ','\\mathrm{T}','Tau'],['Υ','\\Upsilon ','Upsilon'],['Φ','\\Phi ','Phi'],['Χ','\\mathrm{X}','Khi'],['Ψ','\\Psi ','Psi'],['Ω','\\Omega ','Oméga']
+];
+var GK_UP_VAR = [['Γ','\\varGamma ','Gamma italique'],['Δ','\\varDelta ','Delta italique'],['Θ','\\varTheta ','Thêta italique'],['Λ','\\varLambda ','Lambda italique'],['Ξ','\\varXi ','Xi italique'],['Π','\\varPi ','Pi italique'],['Σ','\\varSigma ','Sigma italique'],['Υ','\\varUpsilon ','Upsilon italique'],['Φ','\\varPhi ','Phi italique'],['Ψ','\\varPsi ','Psi italique'],['Ω','\\varOmega ','Oméga italique']];
+var UNI = {
+  bb:{U:0x1D538, L:0x1D552, ex:{C:'ℂ',H:'ℍ',N:'ℕ',P:'ℙ',Q:'ℚ',R:'ℝ',Z:'ℤ'}},
+  cal:{U:0x1D49C, L:0x1D4B6, ex:{B:'ℬ',E:'ℰ',F:'ℱ',H:'ℋ',I:'ℐ',L:'ℒ',M:'ℳ',R:'ℛ'}},
+  frak:{U:0x1D504, L:0x1D51E, ex:{C:'ℭ',H:'ℌ',I:'ℑ',R:'ℜ',Z:'ℨ'}}
+};
+function uniChar(ch, style){
+  var d = UNI[style], up = ch === ch.toUpperCase();
+  if(up && d.ex[ch]) return d.ex[ch];
+  return String.fromCodePoint((up ? d.U : d.L) + ch.toUpperCase().charCodeAt(0) - 65);
+}
+function latinKey(ch){
+  switch(st.style){
+    case 'rm':   return [ch, '\\mathrm{' + ch + '}', ch + ' droit', 'rm'];
+    case 'bf':   return [ch, '\\mathbf{' + ch + '}', ch + ' gras', 'bf'];
+    case 'bb':   return [uniChar(ch,'bb'), '\\mathbb{' + ch + '}', ch + ' ensemble', 'uni'];
+    case 'cal':  return [uniChar(ch,'cal'), '\\mathcal{' + ch + '}', ch + ' calligraphique', 'uni'];
+    case 'frak': return [uniChar(ch,'frak'), '\\mathfrak{' + ch + '}', ch + ' gothique', 'uni'];
+    default:     return [ch, ch, ch, 'it'];
+  }
+}
+function lettersKeys(){
+  var keys = [], up = st.shift > 0;
+  if(st.script === 'greek'){
+    var main = up ? GK_UP : GK_LOW, vars = up ? GK_UP_VAR : GK_LOW_VAR;
+    main.forEach(function(g){ keys.push([g[0], g[1], g[2], 'gk']); });
+    vars.forEach(function(g){ keys.push([g[0], g[1], g[2], up ? 'gk it' : 'gk']); });
+  } else {
+    if(st.style === 'bb' || st.style === 'cal') up = true;
+    LAT.split('').forEach(function(c){ keys.push(latinKey(up ? c.toUpperCase() : c)); });
+    keys.push(K(SB('x','n'), '_{▢}', 'Indice'), K(SP('x','n'), '^{▢}', 'Exposant'), K('′', "'", 'Prime'), K('␣', '\\, ', 'Espace fine'));
+  }
+  return keys;
+}
+
+var TABS = {
+  base:{ name:'123', cols:6, keys:[
+    K('7','7'),K('8','8'),K('9','9'),K('÷','\\div ','Division'),K('(','('),K(')',')'),
+    K('4','4'),K('5','5'),K('6','6'),K('×','\\times ','Multiplication'),K('[','['),K(']',']'),
+    K('1','1'),K('2','2'),K('3','3'),K('−','-','Moins'),K('{','\\{ ','Accolade ouvrante'),K('}','\\} ','Accolade fermante'),
+    K('0','0'),K('.','.'),K(',',','),K('+','+'),K('=','='),K('≠','\\neq '),
+    K('&lt;','<','Inférieur à'),K('&gt;','>','Supérieur à'),K('≤','\\leq '),K('≥','\\geq '),K('≈','\\approx '),K('±','\\pm '),
+    K('x','x'),K('y','y'),K('z','z'),K('n','n'),K('i','i'),K('t','t'),
+    K('·','\\cdot ','Produit'),K('∓','\\mp '),K('%','\\%'),K('!','!'),K('′',"'",'Prime'),K('|','|'),
+    K(F('a','b'),'\\frac{▢}{▢}','Fraction'),K('√','\\sqrt{▢}','Racine carrée'),K(SP('x','2'),'^{2}','Carré'),K(SP('x','n'),'^{▢}','Exposant'),K(SB('x','n'),'_{▢}','Indice'),K('( )','\\left(▢\\right)','Parenthèses adaptatives')
+  ]},
+  struct:{ name:'Structures', min:56, keys:[
+    K(F('a','b'),'\\frac{▢}{▢}','Fraction'),
+    K(F('a','b')+'<em>d</em>','\\dfrac{▢}{▢}','Grande fraction'),
+    K('√','\\sqrt{▢}','Racine carrée'),
+    K(SP('','n')+'√','\\sqrt[▢]{▢}','Racine n-ième'),
+    K(SP('x','2'),'^{2}','Carré'),
+    K(SP('x','3'),'^{3}','Cube'),
+    K(SP('x','n'),'^{▢}','Exposant'),
+    K(SB('x','n'),'_{▢}','Indice'),
+    K(SB('x','i')+'<sup>j</sup>','_{▢}^{▢}','Indice et exposant'),
+    K(SP('e','x'),'e^{▢}','Exponentielle'),
+    K(SP('x','−1'),'^{-1}','Inverse'),
+    K('( )','\\left(▢\\right)','Parenthèses adaptatives'),
+    K('[ ]','\\left[▢\\right]','Crochets adaptatifs'),
+    K('{ }','\\left\\{▢\\right\\}','Accolades adaptatives'),
+    K('| |','\\left|▢\\right|','Valeur absolue'),
+    K('‖ ‖','\\left\\|▢\\right\\|','Norme'),
+    K('⌊ ⌋','\\left\\lfloor ▢\\right\\rfloor ','Partie entière'),
+    K('⌈ ⌉','\\left\\lceil ▢\\right\\rceil ','Partie entière supérieure'),
+    K('⟨ ⟩','\\left\\langle ▢\\right\\rangle ','Produit scalaire'),
+    K('(<sup>n</sup><sub>k</sub>)','\\binom{▢}{▢}','Coefficient binomial'),
+    K('<span style="text-decoration:overline">x</span>','\\overline{▢}','Barre (conjugué, mesure algébrique)'),
+    K(AC('→','x'),'\\vec{▢}','Vecteur'),
+    K(AC('^','x'),'\\hat{▢}','Chapeau'),
+    K(AC('~','x'),'\\tilde{▢}','Tilde'),
+    K(AC('˙','x'),'\\dot{▢}','Dérivée pointée'),
+    K(AC('⟶','AB'),'\\overrightarrow{▢}','Vecteur AB'),
+    K('<u>x</u>','\\underline{▢}','Souligné'),
+    K('txt','\\text{▢}','Texte'),
+    K('rm','\\mathrm{▢}','Romain'),
+    K('bf','\\mathbf{▢}','Gras'),
+    K('cal','\\mathcal{▢}','Calligraphique'),
+    K('⏟','\\underbrace{▢}_{▢}','Accolade dessous'),
+    K('⏞','\\overbrace{▢}^{▢}','Accolade dessus'),
+    K(AC('f','→'),'\\xrightarrow{▢}','Flèche avec texte'),
+    K('␣','\\, ','Espace fine'),
+    K('␣␣','\\; ','Espace moyenne'),
+    K('quad','\\quad ','Grand espace'),
+    K('\\\\','\\\\ ','Saut de ligne')
+  ]},
+  analyse:{ name:'Analyse', min:60, keys:[
+    K('∑','\\sum_{i=▢}^{▢} ▢','Somme'),
+    K('∑<sub>∞</sub>','\\sum_{n=0}^{+\\infty} ▢','Série'),
+    K('∏','\\prod_{i=▢}^{▢} ▢','Produit'),
+    K('∫','\\int_{▢}^{▢} ▢ \\,\\mathrm{d}x','Intégrale définie'),
+    K('∫ <sub>∅</sub>','\\int ▢ \\,\\mathrm{d}x','Intégrale sans bornes'),
+    K('∬','\\iint_{▢} ▢ \\,\\mathrm{d}x\\,\\mathrm{d}y','Intégrale double'),
+    K('∭','\\iiint_{▢} ▢ \\,\\mathrm{d}V','Intégrale triple'),
+    K('∮','\\oint_{▢} ▢ \\,\\mathrm{d}\\ell','Intégrale curviligne'),
+    K('lim','\\lim_{x \\to ▢} ▢','Limite'),
+    K('limsup','\\limsup_{n \\to ▢} ▢','Limite supérieure'),
+    K('liminf','\\liminf_{n \\to ▢} ▢','Limite inférieure'),
+    K(F('d','dx'),'\\frac{\\mathrm{d}▢}{\\mathrm{d}▢}','Dérivée'),
+    K(F('∂','∂x'),'\\frac{\\partial ▢}{\\partial ▢}','Dérivée partielle'),
+    K('∂','\\partial '),
+    K('∇','\\nabla '),
+    K('d','\\mathrm{d}','d droit'),
+    K('∞','\\infty '),
+    K('+∞','+\\infty '),
+    K('−∞','-\\infty '),
+    K('→','\\to '),
+    K('↦','\\mapsto '),
+    K('[ ]<sup>b</sup><sub>a</sub>','\\left[▢\\right]_{▢}^{▢}','Crochet avec bornes'),
+    K('|<sup>b</sup><sub>a</sub>','\\Big|_{▢}^{▢}','Barre avec bornes'),
+    K('f′','f\'','f prime'),
+    K('f″','f\'\'','f seconde'),
+    K(SP('f','(n)'),'f^{(▢)}','Dérivée n-ième'),
+    K('o( )','o\\left(▢\\right)','Petit o'),
+    K('O( )','\\mathcal{O}\\left(▢\\right)','Grand O'),
+    K('∼','\\sim ','Équivalent'),
+    K('⋃','\\bigcup_{i=▢}^{▢} ▢','Grande union'),
+    K('⋂','\\bigcap_{i=▢}^{▢} ▢','Grande intersection')
+  ]},
+  fonctions:{ name:'Fonctions', min:62, keys:[
+    K('sin','\\sin '),K('cos','\\cos '),K('tan','\\tan '),K('cot','\\cot '),
+    K('arcsin','\\arcsin '),K('arccos','\\arccos '),K('arctan','\\arctan '),
+    K('sinh','\\sinh '),K('cosh','\\cosh '),K('tanh','\\tanh '),
+    K('sh','\\operatorname{sh} '),K('ch','\\operatorname{ch} '),K('th','\\operatorname{th} '),
+    K('ln','\\ln '),K('log','\\log '),K('log₂','\\log_{2} '),K('exp','\\exp '),
+    K('exp( )','\\exp\\left(▢\\right)'),K('sin( )','\\sin\\left(▢\\right)'),K('cos( )','\\cos\\left(▢\\right)'),
+    K('max','\\max '),K('min','\\min '),K('sup','\\sup '),K('inf','\\inf '),
+    K('det','\\det '),K('dim','\\dim '),K('ker','\\ker '),
+    K('Im','\\operatorname{Im} '),K('Re','\\operatorname{Re} '),K('arg','\\arg '),
+    K('rg','\\operatorname{rg} '),K('tr','\\operatorname{tr} '),K('Card','\\operatorname{Card} '),
+    K('id','\\mathrm{id}'),K('Vect','\\operatorname{Vect} '),
+    K('pgcd','\\operatorname{pgcd}'),K('ppcm','\\operatorname{ppcm}'),
+    K('mod','\\pmod{▢}','Modulo'),K('sgn','\\operatorname{sgn} '),K('deg','\\deg '),
+    K('Var','\\operatorname{Var} '),K('Cov','\\operatorname{Cov} '),
+    K('f(x)','f(x)'),K('g(x)','g(x)'),K('u<sub>n</sub>','u_{n}','Suite u indice n'),K('(u<sub>n</sub>)','\\left(u_{n}\\right)_{n \\in \\mathbb{N}}','Suite')
+  ]},
+  lettres:{ name:'Lettres', letters:true },
+  ens:{ name:'Ensembles', min:54, keys:[
+    K('∈','\\in '),K('∉','\\notin '),K('⊂','\\subset '),K('⊆','\\subseteq '),K('⊄','\\not\\subset '),K('⊃','\\supset '),
+    K('∪','\\cup '),K('∩','\\cap '),K('∖','\\setminus '),K('∅','\\varnothing '),
+    K('ℕ','\\mathbb{N} '),K('ℤ','\\mathbb{Z} '),K('ℚ','\\mathbb{Q} '),K('ℝ','\\mathbb{R} '),K('ℂ','\\mathbb{C} '),K('K','\\mathbb{K} ','Corps K'),
+    K('ℕ*','\\mathbb{N}^{*}'),K('ℝ*','\\mathbb{R}^{*}'),K('ℝ<sub>+</sub>','\\mathbb{R}_{+}'),
+    K('ℙ( )','\\mathbb{P}\\left(▢\\right)','Probabilité'),K('𝔼[ ]','\\mathbb{E}\\left[▢\\right]','Espérance'),K('𝕍( )','\\mathbb{V}\\left(▢\\right)','Variance'),
+    K('∀','\\forall '),K('∃','\\exists '),K('∃!','\\exists ! '),K('¬','\\neg '),K('∧','\\land '),K('∨','\\lor '),
+    K('⇒','\\Rightarrow '),K('⇐','\\Leftarrow '),K('⇔','\\Leftrightarrow '),
+    K('→','\\rightarrow '),K('←','\\leftarrow '),K('↔','\\leftrightarrow '),K('↦','\\mapsto '),
+    K('∣','\\mid ','Divise / tel que'),K('∤','\\nmid ','Ne divise pas'),K('≡','\\equiv '),K('∼','\\sim '),K('≃','\\simeq '),K('≅','\\cong '),K('∝','\\propto '),
+    K('⊥','\\perp '),K('∥','\\parallel '),K('∘','\\circ ','Composition'),K('⊕','\\oplus '),K('⊗','\\otimes '),
+    K('∴','\\therefore '),K('∵','\\because '),K('…','\\ldots '),K('⋯','\\cdots '),K('⋮','\\vdots '),K('⋱','\\ddots '),
+    K('∠','\\angle '),K('°','^{\\circ}','Degré'),K('∎','\\blacksquare ','Fin de démonstration'),
+    K('{ x | }','\\left\\{ ▢ \\mid ▢ \\right\\}','Ensemble défini par une propriété'),
+    K('[a;b]','\\left[▢\\,;\\,▢\\right]','Intervalle fermé'),
+    K(']a;b[','\\left]▢\\,;\\,▢\\right[','Intervalle ouvert'),
+    K('[a;b[','\\left[▢\\,;\\,▢\\right[','Intervalle semi-ouvert'),
+    K(']a;b]','\\left]▢\\,;\\,▢\\right]','Intervalle semi-ouvert'),
+    K('⟦a,b⟧','[\\![▢ , ▢]\\!]','Intervalle d\'entiers')
+  ]},
+  mat:{ name:'Matrices', min:66, keys:[
+    K('(⋮)₂','\\begin{pmatrix} ▢ & ▢ \\\\ ▢ & ▢ \\end{pmatrix}','Matrice 2×2 parenthèses'),
+    K('(⋮)₃','\\begin{pmatrix} ▢ & ▢ & ▢ \\\\ ▢ & ▢ & ▢ \\\\ ▢ & ▢ & ▢ \\end{pmatrix}','Matrice 3×3 parenthèses'),
+    K('col₂','\\begin{pmatrix} ▢ \\\\ ▢ \\end{pmatrix}','Vecteur colonne 2'),
+    K('col₃','\\begin{pmatrix} ▢ \\\\ ▢ \\\\ ▢ \\end{pmatrix}','Vecteur colonne 3'),
+    K('lig₃','\\begin{pmatrix} ▢ & ▢ & ▢ \\end{pmatrix}','Vecteur ligne 3'),
+    K('[⋮]₂','\\begin{bmatrix} ▢ & ▢ \\\\ ▢ & ▢ \\end{bmatrix}','Matrice 2×2 crochets'),
+    K('[⋮]₃','\\begin{bmatrix} ▢ & ▢ & ▢ \\\\ ▢ & ▢ & ▢ \\\\ ▢ & ▢ & ▢ \\end{bmatrix}','Matrice 3×3 crochets'),
+    K('|⋮|₂','\\begin{vmatrix} ▢ & ▢ \\\\ ▢ & ▢ \\end{vmatrix}','Déterminant 2×2'),
+    K('|⋮|₃','\\begin{vmatrix} ▢ & ▢ & ▢ \\\\ ▢ & ▢ & ▢ \\\\ ▢ & ▢ & ▢ \\end{vmatrix}','Déterminant 3×3'),
+    K('{ cas','\\begin{cases} ▢ & \\text{si } ▢ \\\\ ▢ & \\text{sinon} \\end{cases}','Fonction définie par morceaux'),
+    K('système','\\left\\{\\begin{aligned} ▢ \\\\ ▢ \\end{aligned}\\right.','Système d\'équations'),
+    K('aligné','\\begin{aligned} ▢ &= ▢ \\\\ &= ▢ \\end{aligned}','Calcul aligné sur le ='),
+    K('&','& ','Séparateur de colonnes'),
+    K('\\\\','\\\\ ','Saut de ligne'),
+    K('⋯','\\cdots '),K('⋮','\\vdots '),K('⋱','\\ddots '),
+    K('A<sup>⊤</sup>','^{\\top}','Transposée'),
+    K('M<sub>n</sub>(K)','\\mathcal{M}_{▢}\\left(\\mathbb{K}\\right)','Ensemble des matrices'),
+    K('GL<sub>n</sub>','\\mathrm{GL}_{▢}\\left(\\mathbb{K}\\right)','Groupe linéaire'),
+    K('I<sub>n</sub>','I_{▢}','Matrice identité')
+  ]},
+  phys:{ name:'Physique', min:60, keys:[
+    K(AC('→','x'),'\\vec{▢}','Vecteur'),
+    K(AC('⟶','AB'),'\\overrightarrow{▢}','Vecteur AB'),
+    K('<span style="text-decoration:overline">AB</span>','\\overline{▢}','Mesure algébrique'),
+    K('∇⃗','\\vec{\\nabla} '),
+    K('rot','\\overrightarrow{\\operatorname{rot}}\\, '),
+    K('div','\\operatorname{div}\\, '),
+    K('grad','\\overrightarrow{\\operatorname{grad}}\\, '),
+    K('∧','\\wedge ','Produit vectoriel'),
+    K('Δ','\\Delta '),K('δ','\\delta '),K('ħ','\\hbar '),K('ℓ','\\ell '),K('°','^{\\circ}','Degré'),K('±','\\pm '),
+    K('×10<sup>n</sup>','\\times 10^{▢}','Notation scientifique'),
+    K('unité','\\,\\mathrm{▢}','Unité en romain'),
+    K('m','\\,\\mathrm{m}','mètre'),K('s','\\,\\mathrm{s}','seconde'),K('kg','\\,\\mathrm{kg}'),K('N','\\,\\mathrm{N}','newton'),K('J','\\,\\mathrm{J}','joule'),K('W','\\,\\mathrm{W}','watt'),
+    K('Hz','\\,\\mathrm{Hz}'),K('V','\\,\\mathrm{V}','volt'),K('A','\\,\\mathrm{A}','ampère'),K('Ω','\\,\\Omega ','ohm'),K('K','\\,\\mathrm{K}','kelvin'),K('°C','\\,^{\\circ}\\mathrm{C}'),
+    K('mol','\\,\\mathrm{mol}'),K('T','\\,\\mathrm{T}','tesla'),K('Pa','\\,\\mathrm{Pa}','pascal'),
+    K('m·s<sup>−1</sup>','\\,\\mathrm{m\\cdot s^{-1}}'),K('m·s<sup>−2</sup>','\\,\\mathrm{m\\cdot s^{-2}}'),
+    K('m<sup>2</sup>','\\,\\mathrm{m^{2}}'),K('m<sup>3</sup>','\\,\\mathrm{m^{3}}'),
+    K('kg·m<sup>−3</sup>','\\,\\mathrm{kg\\cdot m^{-3}}'),
+    K('µ','\\mu '),K('λ','\\lambda '),K('ν','\\nu '),K('ω','\\omega '),K('ρ','\\rho '),K('θ','\\theta ')
+  ]}
+};
+
+/* ---------- Sauvegarde locale ---------- */
+function load(){
+  try{
+    var d = JSON.parse(localStorage.getItem('mkbd-v1') || 'null');
+    if(d){
+      ta.value = d.src || '';
+      ['mode','cloze','n','esc'].forEach(function(k){ if(d[k] !== undefined) st[k] = d[k]; });
+      st.saved = Array.isArray(d.saved) ? d.saved : [];
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+function persist(){
+  try{ localStorage.setItem('mkbd-v1', JSON.stringify({src:ta.value, mode:st.mode, cloze:st.cloze, n:st.n, esc:st.esc, saved:st.saved})); }catch(e){}
+}
+
+/* ---------- Édition du texte ---------- */
+function replaceSel(text, s, e){
+  ta.focus();
+  ta.setSelectionRange(s, e);
+  var ok = false;
+  try{ ok = (text === '') ? document.execCommand('delete') : document.execCommand('insertText', false, text); }catch(_){}
+  if(!ok){
+    ta.setRangeText(text, s, e, 'end');
+    ta.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+}
+function insertTpl(tpl){
+  var s = ta.selectionStart, e = ta.selectionEnd;
+  var sel = ta.value.slice(s, e);
+  if(sel === PH) sel = '';
+  var text = tpl, next = text.indexOf(PH);
+  if(sel && next >= 0){
+    text = text.slice(0, next) + sel + text.slice(next + 1);
+    next = text.indexOf(PH, next + sel.length);
+  }
+  replaceSel(text, s, e);
+  if(next >= 0) ta.setSelectionRange(s + next, s + next + 1);
+  else ta.setSelectionRange(s + text.length, s + text.length);
+  update();
+}
+function back(){
+  var v = ta.value, s = ta.selectionStart, e = ta.selectionEnd;
+  if(s === e){
+    if(s === 0){ ta.focus(); return; }
+    var m = v.slice(0, s).match(/\\[A-Za-z]+ ?$/);
+    s = s - (m ? m[0].length : 1);
+  }
+  replaceSel('', s, e);
+  ta.setSelectionRange(s, s);
+  update();
+}
+function move(d){
+  ta.focus();
+  var v = ta.value, s = ta.selectionStart, e = ta.selectionEnd, p, m;
+  if(s !== e){ p = d < 0 ? s : e; }
+  else if(d < 0){ m = v.slice(0, s).match(/\\[A-Za-z]+ ?$/); p = Math.max(0, s - (m ? m[0].length : 1)); }
+  else { m = v.slice(s).match(/^\\[A-Za-z]+ ?/); p = Math.min(v.length, s + (m ? m[0].length : 1)); }
+  ta.setSelectionRange(p, p);
+}
+function nextField(){
+  ta.focus();
+  var v = ta.value, e = ta.selectionEnd;
+  var i = v.indexOf(PH, e);
+  if(i < 0) i = v.indexOf(PH);
+  if(i >= 0) ta.setSelectionRange(i, i + 1);
+  else ta.setSelectionRange(v.length, v.length);
+}
+function exitGroup(){
+  ta.focus();
+  var v = ta.value, e = ta.selectionEnd;
+  var re = /\}|\\right(?:\\[A-Za-z{}|]+|[()\[\].|])/g;
+  re.lastIndex = e;
+  var m = re.exec(v);
+  var p = m ? m.index + m[0].length : v.length;
+  ta.setSelectionRange(p, p);
+}
+
+/* ---------- Génération du code ---------- */
+function makeCode(src, mode){
+  var s = String(src).trim();
+  var holes = (s.match(/▢/g) || []).length;
+  s = s.replace(/▢/g, '').trim();
+  if(!s) return {code:'', holes:holes};
+  var body;
+  if(mode === 'inline') body = '\\(' + s + '\\)';
+  else if(mode === 'block') body = '\\[' + s + '\\]';
+  else body = '[$]' + s + '[/$]';
+  if(st.esc) body = body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if(st.cloze){
+    while(body.indexOf('}}') >= 0) body = body.replace(/\}\}/g, '} }');
+    body = '{{c' + st.n + '::' + body + '}}';
+  }
+  return {code:body, holes:holes};
+}
+function renderOut(){
+  var r = makeCode(ta.value, st.mode);
+  out.value = r.code;
+  out.style.height = 'auto';
+  out.style.height = Math.max(56, out.scrollHeight) + 'px';
+  $('copy').disabled = !r.code;
+  $('keep').disabled = !r.code;
+  var w = $('warn');
+  if(r.holes > 0){
+    w.hidden = false;
+    w.textContent = r.holes === 1 ? 'Une case ▢ est vide : elle est retirée du code.' : r.holes + ' cases ▢ sont vides : elles sont retirées du code.';
+  } else { w.hidden = true; }
+}
+
+/* ---------- Aperçu MathJax ---------- */
+var seq = 0, tries = 0;
+function typeset(){
+  var raw = ta.value.trim();
+  if(!raw){
+    prev.classList.remove('block');
+    prev.innerHTML = '<span class="ph">Ta formule s\u2019affichera ici.</span>';
+    return;
+  }
+  var src = raw.replace(/▢/g, '\\square ');
+  var block = st.mode === 'block';
+  prev.classList.toggle('block', block);
+  var ready = window.MathJax && window.MathJax.typesetPromise && window.MathJax.startup && window.MathJax.startup.promise;
+  if(!ready){
+    if(tries++ < 60) setTimeout(typeset, 250);
+    else prev.textContent = 'Aperçu indisponible : MathJax ne s\u2019est pas chargé. Le code, lui, reste valide.';
+    return;
+  }
+  tries = 0;
+  var my = ++seq;
+  var el = document.createElement('div');
+  el.textContent = (block ? '\\[' : '\\(') + src + (block ? '\\]' : '\\)');
+  stage.appendChild(el);
+  MathJax.startup.promise = MathJax.startup.promise
+    .then(function(){ return MathJax.typesetPromise([el]); })
+    .then(function(){ if(my === seq) prev.replaceChildren(el); else el.remove(); })
+    .catch(function(err){ el.remove(); if(my === seq) prev.textContent = 'Erreur : ' + ((err && err.message) || err); });
+}
+
+var tmr;
+function update(){
+  renderOut();
+  clearTimeout(tmr);
+  tmr = setTimeout(function(){ typeset(); persist(); }, 90);
+}
+
+/* ---------- Interface ---------- */
+function renderTabs(){
+  tabsEl.innerHTML = '';
+  Object.keys(TABS).forEach(function(id){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'tab' + (id === st.tab ? ' on' : '');
+    b.textContent = TABS[id].name; b.dataset.tab = id;
+    b.setAttribute('role','tab'); b.setAttribute('aria-selected', id === st.tab ? 'true' : 'false');
+    tabsEl.appendChild(b);
+  });
+}
+function renderKeys(){
+  var t = TABS[st.tab];
+  $('sub').hidden = !t.letters;
+  var cols;
+  if(t.letters){ curKeys = lettersKeys(); cols = st.script === 'greek' ? 8 : 10; }
+  else { curKeys = t.keys; cols = t.cols; }
+  keysEl.style.gridTemplateColumns = cols ? 'repeat(' + cols + ',1fr)' : 'repeat(auto-fill,minmax(' + (t.min || 54) + 'px,1fr))';
+  keysEl.innerHTML = '';
+  curKeys.forEach(function(k, i){
+    var b = document.createElement('button');
+    b.type = 'button';
+    var cls = 'key', lab = k[0];
+    if(k[3]) cls += ' ' + k[3];
+    else if(/^[0-9]$/.test(lab)) cls += ' num';
+    else if(/^[a-z]$/.test(lab)) cls += ' var';
+    else if(/^[A-Za-zéÉ]{2,}$/.test(lab)) cls += ' fn';
+    b.className = cls;
+    b.innerHTML = lab;
+    b.dataset.i = i;
+    b.title = k[2] || k[1].replace(/▢/g,'□');
+    b.setAttribute('aria-label', k[2] || k[1].replace(/▢/g,'').trim());
+    keysEl.appendChild(b);
+  });
+  keysEl.scrollTop = 0;
+}
+function syncLetters(){
+  var greek = st.script === 'greek';
+  Array.prototype.forEach.call($('scriptSeg').querySelectorAll('button'), function(b){ b.classList.toggle('on', b.dataset.s === st.script); });
+  Array.prototype.forEach.call($('styles').querySelectorAll('button'), function(b){ b.classList.toggle('on', b.dataset.st === st.style); });
+  $('styles').hidden = greek;
+  var force = !greek && (st.style === 'bb' || st.style === 'cal');
+  var sh = $('shift');
+  sh.disabled = force;
+  sh.classList.toggle('on', force || st.shift > 0);
+  sh.classList.toggle('lock', !force && st.shift === 2);
+  sh.setAttribute('aria-pressed', (force || st.shift > 0) ? 'true' : 'false');
+}
+function syncUI(){
+  Array.prototype.forEach.call($('seg').querySelectorAll('button'), function(b){
+    b.classList.toggle('on', b.dataset.mode === st.mode);
+    b.setAttribute('aria-pressed', b.dataset.mode === st.mode ? 'true' : 'false');
+  });
+  $('cloze').checked = st.cloze;
+  $('esc').checked = st.esc;
+  $('stepper').hidden = !st.cloze;
+  $('cn').textContent = 'c' + st.n;
+}
+
+var toastTimer;
+function toast(msg){
+  var t = $('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 1500);
+}
+function copyText(text){
+  var p;
+  try{ p = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : Promise.reject(); }
+  catch(e){ p = Promise.reject(); }
+  return p.then(function(){ return true; }).catch(function(){
+    try{
+      var t = document.createElement('textarea');
+      t.value = text; t.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(t); t.select();
+      var ok = document.execCommand('copy');
+      t.remove();
+      return ok;
+    }catch(e){ return false; }
+  });
+}
+
+/* Formules enregistrées */
+function renderSaved(){
+  var box = $('saved');
+  box.innerHTML = '';
+  $('savedCount').textContent = st.saved.length;
+  if(!st.saved.length){
+    var p = document.createElement('p'); p.className = 'muted';
+    p.textContent = 'Appuie sur « Enregistrer » pour garder une formule et la recopier plus tard.';
+    box.appendChild(p); return;
+  }
+  st.saved.forEach(function(it, i){
+    var row = document.createElement('div'); row.className = 'srow';
+    var load = document.createElement('button'); load.type = 'button'; load.className = 'sload';
+    load.textContent = it.src; load.title = 'Recharger dans l\u2019éditeur';
+    load.onclick = function(){ ta.value = it.src; st.mode = it.mode || st.mode; syncUI(); update(); $('work').scrollTo({top:0, behavior:'smooth'}); };
+    var cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sbtn'; cp.textContent = 'Copier';
+    cp.onclick = function(){ var r = makeCode(it.src, it.mode || 'inline'); copyText(r.code).then(function(ok){ toast(ok ? 'Code copié' : 'Copie impossible ici'); }); };
+    var del = document.createElement('button'); del.type = 'button'; del.className = 'sbtn'; del.textContent = '✕'; del.setAttribute('aria-label', 'Supprimer');
+    del.onclick = function(){ st.saved.splice(i, 1); persist(); renderSaved(); };
+    row.appendChild(load); row.appendChild(cp); row.appendChild(del);
+    box.appendChild(row);
+  });
+}
+
+/* ---------- Événements ---------- */
+$('kb').addEventListener('mousedown', function(e){ if(e.target.closest('button')) e.preventDefault(); });
+keysEl.addEventListener('click', function(e){
+  var b = e.target.closest('.key'); if(!b) return;
+  var k = curKeys[+b.dataset.i];
+  insertTpl(k[1]);
+  if(TABS[st.tab].letters && st.shift === 1){ st.shift = 0; syncLetters(); renderKeys(); }
+});
+tabsEl.addEventListener('click', function(e){
+  var b = e.target.closest('.tab'); if(!b) return;
+  st.tab = b.dataset.tab; renderTabs(); renderKeys();
+});
+$('tools').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-act]'); if(!b) return;
+  switch(b.dataset.act){
+    case 'undo': ta.focus(); document.execCommand('undo'); update(); break;
+    case 'redo': ta.focus(); document.execCommand('redo'); update(); break;
+    case 'left': move(-1); break;
+    case 'right': move(1); break;
+    case 'next': nextField(); break;
+    case 'exit': exitGroup(); break;
+    case 'back': back(); break;
+  }
+});
+$('scriptSeg').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-s]'); if(!b) return;
+  st.script = b.dataset.s; syncLetters(); renderKeys();
+});
+$('shift').addEventListener('click', function(){
+  st.shift = (st.shift + 1) % 3; syncLetters(); renderKeys();
+});
+$('styles').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-st]'); if(!b) return;
+  st.style = b.dataset.st; syncLetters(); renderKeys();
+});
+ta.addEventListener('input', update);
+$('seg').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-mode]'); if(!b) return;
+  st.mode = b.dataset.mode; syncUI(); update();
+});
+$('cloze').addEventListener('change', function(){ st.cloze = this.checked; syncUI(); update(); });
+$('esc').addEventListener('change', function(){ st.esc = this.checked; update(); });
+$('stepper').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-d]'); if(!b) return;
+  st.n = Math.min(20, Math.max(1, st.n + (+b.dataset.d))); syncUI(); update();
+});
+$('nat').addEventListener('click', function(){
+  st.native = !st.native;
+  ta.inputMode = st.native ? 'text' : 'none';
+  this.classList.toggle('on', st.native);
+  ta.blur(); ta.focus();
+});
+$('clr').addEventListener('click', function(){
+  if(!ta.value) return;
+  ta.focus(); ta.select();
+  if(!document.execCommand('delete')){ ta.value = ''; }
+  update();
+});
+$('copy').addEventListener('click', function(){
+  var code = out.value; if(!code) return;
+  copyText(code).then(function(ok){
+    if(ok) toast('Code copié');
+    else { out.focus(); out.select(); toast('Code sélectionné : copie-le à la main'); }
+  });
+});
+$('keep').addEventListener('click', function(){
+  var s = ta.value.trim(); if(!s) return;
+  st.saved = st.saved.filter(function(x){ return !(x.src === s && x.mode === st.mode); });
+  st.saved.unshift({src:s, mode:st.mode});
+  st.saved = st.saved.slice(0, 40);
+  persist(); renderSaved(); $('savedBox').open = true;
+  toast('Formule enregistrée');
+});
+out.addEventListener('focus', function(){ out.select(); });
+
+/* ---------- Démarrage ---------- */
+var hadDraft = load();
+if(!hadDraft || !ta.value.trim()){ ta.value = '\\sum_{k=1}^{n} k = \\frac{n(n+1)}{2}'; }
+syncLetters(); renderTabs(); renderKeys(); syncUI(); renderSaved(); update();
+try{ ta.focus({preventScroll:true}); ta.setSelectionRange(ta.value.length, ta.value.length); }catch(e){}
+})();
+</script>
+</body>
+</html>
